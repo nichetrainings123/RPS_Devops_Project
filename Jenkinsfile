@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         IMAGE_NAME = "nichetrainings123/rps-devops-project"
-        IMAGE_TAG  = "latest"
+        IMAGE_TAG  = "${BUILD_NUMBER}"
     }
 
     stages {
@@ -17,9 +17,11 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 sh '''
+                  set -e
                   echo "Workspace content:"
                   ls -la
                   docker build -t $IMAGE_NAME:$IMAGE_TAG .
+                  docker tag $IMAGE_NAME:$IMAGE_TAG $IMAGE_NAME:latest
                 '''
             }
         }
@@ -31,21 +33,26 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    sh '''
+                      echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                    '''
                 }
             }
         }
 
         stage('Push Image to DockerHub') {
             steps {
-                sh 'docker push $IMAGE_NAME:$IMAGE_TAG'
+                sh '''
+                  docker push $IMAGE_NAME:$IMAGE_TAG
+                  docker push $IMAGE_NAME:latest
+                '''
             }
         }
     }
 
     post {
         success {
-            echo "Docker image pushed successfully 🚀"
+            echo "Docker images pushed successfully 🚀"
         }
         failure {
             echo "Pipeline failed ❌"
